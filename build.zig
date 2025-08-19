@@ -62,7 +62,12 @@ pub fn build(b: *std.Build) void {
         lib_mod.addIncludePath(c_sources.path("src"));
         lib_mod.link_libcpp = true;
     } else {
-        lib_mod.addCSourceFile(.{ .file = c_sources.path("src/static.c") });
+        lib_mod.addCSourceFile(.{
+            .file = c_sources.path("src/static.c"),
+            .flags = &.{
+                "-Wno-error=date-time",
+            },
+        });
     }
 
     if (valgrind) {
