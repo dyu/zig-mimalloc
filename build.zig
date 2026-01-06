@@ -1,4 +1,13 @@
 const std = @import("std");
+const builtin = @import("builtin");
+const zig_version = builtin.zig_version;
+
+fn isUbsan(mod: *std.Build.Module) bool {
+    if (mod.sanitize_c) |sanitize_c| {
+        return if (zig_version.major == 0 and zig_version.minor == 14) sanitize_c else sanitize_c != .off;
+    }
+    return false;
+}
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -13,11 +22,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const c_sources = b.dependency("mimalloc-src", .{});
+    const c_sources = b.dependency("mimalloc_src", .{});
     lib_mod.link_libc = true;
 
     lib_mod.addIncludePath(c_sources.path("include"));
 
+    const c_headers_only = b.option(bool, "c_headers_only", "Whether to skip building the c sources or not)") orelse false;
     const secure = b.option(bool, "secure", "Use full security mitigations (like guard pages, allocation randomization, double-free mitigation, and free-list corruption detection)") orelse false;
     const debug_full = b.option(bool, "debug_full", "Use full internal heap invariant checking in DEBUG mode (expensive)") orelse switch (optimize) {
         .Debug => true,
@@ -49,19 +59,21 @@ pub fn build(b: *std.Build) void {
     }
 
     const tsan = lib_mod.sanitize_thread != null and lib_mod.sanitize_thread.?;
-    const ubsan = lib_mod.sanitize_c != null and (lib_mod.sanitize_c.? != .off);
+
     const valgrind = lib_mod.valgrind != null and lib_mod.valgrind.?;
 
     if (tsan) {
         lib_mod.addCMacro("MI_TSAN", "1");
     }
 
-    if (ubsan) {
+    if (isUbsan(lib_mod)) {
         lib_mod.addCMacro("MI_UBSAN", "1");
-        lib_mod.addCSourceFile(.{ .file = b.path("src/ubsan_main.cpp") });
         lib_mod.addIncludePath(c_sources.path("src"));
-        lib_mod.link_libcpp = true;
-    } else {
+        if (!c_headers_only) {
+            lib_mod.addCSourceFile(.{ .file = b.path("src/ubsan_main.cpp") });
+            lib_mod.link_libcpp = true;
+        }
+    } else if (!c_headers_only) {
         lib_mod.addCSourceFile(.{ .file = c_sources.path("src/static.c") });
     }
 
