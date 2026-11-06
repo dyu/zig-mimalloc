@@ -1,4 +1,5 @@
 const std = @import("std");
+const translate_c = @import("translate_c");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -13,10 +14,26 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const c_sources = b.dependency("mimalloc-src", .{});
-    lib_mod.link_libc = true;
+    // ======================================================================
+    // deps
 
+    const c_sources = b.dependency("mimalloc-src", .{
+        .link_libc = true,
+    });
     lib_mod.addIncludePath(c_sources.path("include"));
+
+    const dep_translate_c = b.dependency("translate_c", .{});
+
+    const translate_mimalloc_h: translate_c.Translator = .init(dep_translate_c, .{
+        .c_source_file = c_sources.path("include/mimalloc.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    lib_mod.addImport("c", translate_mimalloc_h.mod);
+
+    // ======================================================================
+    // opts
 
     const secure = b.option(bool, "secure", "Use full security mitigations (like guard pages, allocation randomization, double-free mitigation, and free-list corruption detection)") orelse false;
     const debug_full = b.option(bool, "debug_full", "Use full internal heap invariant checking in DEBUG mode (expensive)") orelse switch (optimize) {
@@ -49,7 +66,7 @@ pub fn build(b: *std.Build) void {
     }
 
     const tsan = lib_mod.sanitize_thread != null and lib_mod.sanitize_thread.?;
-    const ubsan = lib_mod.sanitize_c != null and lib_mod.sanitize_c.?;
+    const ubsan = lib_mod.sanitize_c != null and lib_mod.sanitize_c.? != .off;
     const valgrind = lib_mod.valgrind != null and lib_mod.valgrind.?;
 
     if (tsan) {
@@ -68,4 +85,27 @@ pub fn build(b: *std.Build) void {
     if (valgrind) {
         lib_mod.addCMacro("MI_TRACK_VALGRIND", "1");
     }
+
+    // ======================================================================
+
+    const tests = b.step("test", "Run all tests");
+
+    const lib_test = b.addTest(.{
+        // .root_module = zpp,
+        // .root_source_file = b.path("tests/test.zig"),
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("test/test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+        .filters = b.option(
+            []const []const u8,
+            "test-filter",
+            "Limit the amount of tests to run",
+        ) orelse &.{},
+        // .test_runner = .{ .path = b.path("test_runner.zig"), .mode = .simple },
+    });
+    lib_test.root_module.addImport("mimalloc", lib_mod);
+
+    tests.dependOn(&b.addRunArtifact(lib_test).step);
 }

@@ -3,7 +3,8 @@ const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const Alignment = std.mem.Alignment;
 
-const mi = @import("c.zig");
+// const mi = @import("c.zig");
+const mi = @import("c");
 
 var garbage_state: i32 = 0;
 

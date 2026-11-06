@@ -4,7 +4,8 @@ const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const builtin = @import("builtin");
 
-const mi = @import("c.zig");
+// const mi = @import("c.zig");
+const mi = @import("c");
 /// The maximum size of a small allocation.
 /// Usually 128 * sizeof(void*), which is 1KB on 64-bit systems.
 pub const SMALL_ALLOC_MAX: usize = mi.MI_SMALL_SIZE_MAX;
