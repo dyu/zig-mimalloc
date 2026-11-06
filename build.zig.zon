@@ -9,8 +9,8 @@
             .hash = "N-V-__8AABJFSwD_Qx1QslOL2F8k0CWuU6-kyyAAEqAoKU8W",
         },
         .translate_c = .{
-            .url = "git+https://codeberg.org/ziglang/translate-c#875969d3493e245e01bf5d7860f792d8f3eb9ef5",
-            .hash = "translate_c-0.0.0-Q_BUWoFOBwAhz77Zd15HCVuhTKzdUKc94kezmCeJ7IC_",
+            .url = "git+https://codeberg.org/dyu/translate-c#122a1160bdca2f80ff96d0b1231c36b2e085cdb2",
+            .hash = "translate_c-2.0.2-O9t1aOFNBwDGZ6Ebu7FGKM_2QY9ss8CtIyF87Hpnt59P",
         },
     },
     .paths = .{
